@@ -56,6 +56,13 @@ def standard_bf(
 
     Parameters
     ----------
+    XXX
+
+
+    Returns
+    -------
+    list of tuples pairs (basis function, weight) that is
+    (rubin_sim.scheduler.BasisFunction object, float)
 
     """
     template_weights = {
@@ -132,50 +139,51 @@ def standard_bf(
     )
     bfs.append((bf.StrictFilterBasisFunction(filtername=filtername), stayfilter_weight))
 
-    if filtername2 is not None:
-        bfs.append(
-            (
-                bf.NObsPerYearBasisFunction(
-                    filtername=filtername,
-                    nside=nside,
-                    footprint=footprints.get_footprint(filtername),
-                    n_obs=n_obs_template[filtername],
-                    season=season,
-                    season_start_hour=season_start_hour,
-                    season_end_hour=season_end_hour,
-                ),
-                template_weights[filtername] / 2.0,
+    if n_obs_template is not None:
+        if filtername2 is not None:
+            bfs.append(
+                (
+                    bf.NObsPerYearBasisFunction(
+                        filtername=filtername,
+                        nside=nside,
+                        footprint=footprints.get_footprint(filtername),
+                        n_obs=n_obs_template[filtername],
+                        season=season,
+                        season_start_hour=season_start_hour,
+                        season_end_hour=season_end_hour,
+                    ),
+                    template_weights[filtername] / 2.0,
+                )
             )
-        )
-        bfs.append(
-            (
-                bf.NObsPerYearBasisFunction(
-                    filtername=filtername2,
-                    nside=nside,
-                    footprint=footprints.get_footprint(filtername2),
-                    n_obs=n_obs_template[filtername2],
-                    season=season,
-                    season_start_hour=season_start_hour,
-                    season_end_hour=season_end_hour,
-                ),
-                template_weights[filtername2] / 2.0,
+            bfs.append(
+                (
+                    bf.NObsPerYearBasisFunction(
+                        filtername=filtername2,
+                        nside=nside,
+                        footprint=footprints.get_footprint(filtername2),
+                        n_obs=n_obs_template[filtername2],
+                        season=season,
+                        season_start_hour=season_start_hour,
+                        season_end_hour=season_end_hour,
+                    ),
+                    template_weights[filtername2] / 2.0,
+                )
             )
-        )
-    else:
-        bfs.append(
-            (
-                bf.NObsPerYearBasisFunction(
-                    filtername=filtername,
-                    nside=nside,
-                    footprint=footprints.get_footprint(filtername),
-                    n_obs=n_obs_template[filtername],
-                    season=season,
-                    season_start_hour=season_start_hour,
-                    season_end_hour=season_end_hour,
-                ),
-                template_weights[filtername],
+        else:
+            bfs.append(
+                (
+                    bf.NObsPerYearBasisFunction(
+                        filtername=filtername,
+                        nside=nside,
+                        footprint=footprints.get_footprint(filtername),
+                        n_obs=n_obs_template[filtername],
+                        season=season,
+                        season_start_hour=season_start_hour,
+                        season_end_hour=season_end_hour,
+                    ),
+                    template_weights[filtername],
+                )
             )
-        )
 
     return bfs
 
@@ -520,28 +528,21 @@ def gen_GreedySurveys(
 
     for filtername in filters:
         bfs = []
-        bfs.append(
-            (bf.M5DiffBasisFunction(filtername=filtername, nside=nside), m5_weight)
-        )
-        bfs.append(
-            (
-                bf.FootprintBasisFunction(
-                    filtername=filtername,
-                    footprint=footprints,
-                    out_of_bounds_val=np.nan,
-                    nside=nside,
-                ),
-                footprint_weight,
+        bfs.extend(
+            standard_bf(
+                nside,
+                filtername=filtername,
+                filtername2=None,
+                m5_weight=m5_weight,
+                footprint_weight=footprint_weight,
+                slewtime_weight=slewtime_weight,
+                stayfilter_weight=stayfilter_weight,
+                template_weight=0,
+                u_template_weight=0,
+                g_template_weight=0,
+                footprints=footprints,
+                n_obs_template=None,
             )
-        )
-        bfs.append(
-            (
-                bf.SlewtimeBasisFunction(filtername=filtername, nside=nside),
-                slewtime_weight,
-            )
-        )
-        bfs.append(
-            (bf.StrictFilterBasisFunction(filtername=filtername), stayfilter_weight)
         )
 
         bfs.append(
@@ -672,15 +673,6 @@ def generate_blobs(
     scheduled_respect : float (45)
         How much time to require there be before a pre-scheduled observation (minutes)
     """
-
-    template_weights = {
-        "u": u_template_weight,
-        "g": g_template_weight,
-        "r": template_weight,
-        "i": template_weight,
-        "z": template_weight,
-        "y": template_weight,
-    }
 
     BlobSurvey_params = {
         "slew_approx": 7.5,
@@ -965,70 +957,26 @@ def generate_twi_blobs(
         # List to hold tuples of (basis_function_object, weight)
         bfs = []
 
-        if filtername2 is not None:
-            bfs.append(
-                (
-                    bf.M5DiffBasisFunction(filtername=filtername, nside=nside),
-                    m5_weight / 2.0,
-                )
-            )
-            bfs.append(
-                (
-                    bf.M5DiffBasisFunction(filtername=filtername2, nside=nside),
-                    m5_weight / 2.0,
-                )
-            )
-
-        else:
-            bfs.append(
-                (bf.M5DiffBasisFunction(filtername=filtername, nside=nside), m5_weight)
-            )
-
-        if filtername2 is not None:
-            bfs.append(
-                (
-                    bf.FootprintBasisFunction(
-                        filtername=filtername,
-                        footprint=footprints,
-                        out_of_bounds_val=np.nan,
-                        nside=nside,
-                    ),
-                    footprint_weight / 2.0,
-                )
-            )
-            bfs.append(
-                (
-                    bf.FootprintBasisFunction(
-                        filtername=filtername2,
-                        footprint=footprints,
-                        out_of_bounds_val=np.nan,
-                        nside=nside,
-                    ),
-                    footprint_weight / 2.0,
-                )
-            )
-        else:
-            bfs.append(
-                (
-                    bf.FootprintBasisFunction(
-                        filtername=filtername,
-                        footprint=footprints,
-                        out_of_bounds_val=np.nan,
-                        nside=nside,
-                    ),
-                    footprint_weight,
-                )
-            )
-
-        bfs.append(
-            (
-                bf.SlewtimeBasisFunction(filtername=filtername, nside=nside),
-                slewtime_weight,
+        bfs.extend(
+            standard_bf(
+                nside,
+                filtername=filtername,
+                filtername2=filtername2,
+                m5_weight=m5_weight,
+                footprint_weight=footprint_weight,
+                slewtime_weight=slewtime_weight,
+                stayfilter_weight=stayfilter_weight,
+                template_weight=template_weight,
+                u_template_weight=0,
+                g_template_weight=0,
+                footprints=footprints,
+                n_obs_template=n_obs_template,
+                season=season,
+                season_start_hour=season_start_hour,
+                season_end_hour=season_end_hour,
             )
         )
-        bfs.append(
-            (bf.StrictFilterBasisFunction(filtername=filtername), stayfilter_weight)
-        )
+        
         bfs.append(
             (
                 bf.VisitRepeatBasisFunction(
@@ -1038,50 +986,6 @@ def generate_twi_blobs(
             )
         )
 
-        if filtername2 is not None:
-            bfs.append(
-                (
-                    bf.NObsPerYearBasisFunction(
-                        filtername=filtername,
-                        nside=nside,
-                        footprint=footprints.get_footprint(filtername),
-                        n_obs=n_obs_template[filtername],
-                        season=season,
-                        season_start_hour=season_start_hour,
-                        season_end_hour=season_end_hour,
-                    ),
-                    template_weight / 2.0,
-                )
-            )
-            bfs.append(
-                (
-                    bf.NObsPerYearBasisFunction(
-                        filtername=filtername2,
-                        nside=nside,
-                        footprint=footprints.get_footprint(filtername2),
-                        n_obs=n_obs_template[filtername2],
-                        season=season,
-                        season_start_hour=season_start_hour,
-                        season_end_hour=season_end_hour,
-                    ),
-                    template_weight / 2.0,
-                )
-            )
-        else:
-            bfs.append(
-                (
-                    bf.NObsPerYearBasisFunction(
-                        filtername=filtername,
-                        nside=nside,
-                        footprint=footprints.get_footprint(filtername),
-                        n_obs=n_obs_template[filtername],
-                        season=season,
-                        season_start_hour=season_start_hour,
-                        season_end_hour=season_end_hour,
-                    ),
-                    template_weight,
-                )
-            )
         if repeat_night_weight is not None:
             bfs.append(
                 (
