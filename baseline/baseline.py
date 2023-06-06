@@ -51,6 +51,7 @@ def standard_bf(
     season=300.0,
     season_start_hour=-4.0,
     season_end_hour=2.0,
+    moon_distance=30.0,
 ):
     """Generate the standard basis functions that are shared by blob surveys
 
@@ -185,6 +186,17 @@ def standard_bf(
                 )
             )
 
+    # The shared masks
+    bfs.append(
+        (
+            bf.MoonAvoidanceBasisFunction(nside=nside, moon_distance=moon_distance),
+            0.0,
+        )
+    )
+    filternames = [fn for fn in [filtername, filtername2] if fn is not None]
+    bfs.append((bf.FilterLoadedBasisFunction(filternames=filternames), 0))
+    bfs.append((bf.PlanetMaskBasisFunction(nside=nside), 0.0))
+
     return bfs
 
 
@@ -273,15 +285,6 @@ def blob_for_long(
         Add a detailer to make sure the number of expossures in a visit is always 1 for u observations.
     """
 
-    template_weights = {
-        "u": u_template_weight,
-        "g": g_template_weight,
-        "r": template_weight,
-        "i": template_weight,
-        "z": template_weight,
-        "y": template_weight,
-    }
-
     BlobSurvey_params = {
         "slew_approx": 7.5,
         "filter_change_approx": 140.0,
@@ -347,21 +350,12 @@ def blob_for_long(
                 0.0,
             )
         )
-        bfs.append(
-            (
-                bf.MoonAvoidanceBasisFunction(nside=nside, moon_distance=moon_distance),
-                0.0,
-            )
-        )
-        filternames = [fn for fn in [filtername, filtername2] if fn is not None]
-        bfs.append((bf.FilterLoadedBasisFunction(filternames=filternames), 0))
         if filtername2 is None:
             time_needed = times_needed[0]
         else:
             time_needed = times_needed[1]
         bfs.append((bf.TimeToTwilightBasisFunction(time_needed=time_needed), 0.0))
         bfs.append((bf.NotTwilightBasisFunction(), 0.0))
-        bfs.append((bf.PlanetMaskBasisFunction(nside=nside), 0.0))
         bfs.append((bf.AfterEveningTwiBasisFunction(time_after=time_after_twi), 0.0))
         # XXX--move kwargs up
         bfs.append((bf.HaMaskBasisFunction(ha_min=HA_min, ha_max=HA_max), 0.0))
@@ -562,13 +556,6 @@ def gen_GreedySurveys(
                 0,
             )
         )
-        bfs.append(
-            (bf.MoonAvoidanceBasisFunction(nside=nside, moon_distance=moon_distance), 0)
-        )
-
-        bfs.append((bf.FilterLoadedBasisFunction(filternames=filtername), 0))
-        bfs.append((bf.PlanetMaskBasisFunction(nside=nside), 0))
-
         weights = [val[1] for val in bfs]
         basis_functions = [val[0] for val in bfs]
         surveys.append(
@@ -795,21 +782,12 @@ def generate_blobs(
                 0.0,
             )
         )
-        bfs.append(
-            (
-                bf.MoonAvoidanceBasisFunction(nside=nside, moon_distance=moon_distance),
-                0.0,
-            )
-        )
-        filternames = [fn for fn in [filtername, filtername2] if fn is not None]
-        bfs.append((bf.FilterLoadedBasisFunction(filternames=filternames), 0))
         if filtername2 is None:
             time_needed = times_needed[0]
         else:
             time_needed = times_needed[1]
         bfs.append((bf.TimeToTwilightBasisFunction(time_needed=time_needed), 0.0))
         bfs.append((bf.NotTwilightBasisFunction(), 0.0))
-        bfs.append((bf.PlanetMaskBasisFunction(nside=nside), 0.0))
 
         # unpack the basis functions and weights
         weights = [val[1] for val in bfs]
@@ -976,7 +954,7 @@ def generate_twi_blobs(
                 season_end_hour=season_end_hour,
             )
         )
-        
+
         bfs.append(
             (
                 bf.VisitRepeatBasisFunction(
@@ -1015,14 +993,6 @@ def generate_twi_blobs(
                 0.0,
             )
         )
-        bfs.append(
-            (
-                bf.MoonAvoidanceBasisFunction(nside=nside, moon_distance=moon_distance),
-                0.0,
-            )
-        )
-        filternames = [fn for fn in [filtername, filtername2] if fn is not None]
-        bfs.append((bf.FilterLoadedBasisFunction(filternames=filternames), 0))
         if filtername2 is None:
             time_needed = times_needed[0]
         else:
@@ -1030,7 +1000,6 @@ def generate_twi_blobs(
         bfs.append(
             (bf.TimeToTwilightBasisFunction(time_needed=time_needed, alt_limit=12), 0.0)
         )
-        bfs.append((bf.PlanetMaskBasisFunction(nside=nside), 0.0))
 
         # Let's turn off twilight blobs on nights where we are
         # doing NEO hunts
