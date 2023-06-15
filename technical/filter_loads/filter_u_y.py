@@ -4,11 +4,12 @@ import numpy as np
 import matplotlib.pylab as plt
 import healpy as hp
 from rubin_sim.scheduler.model_observatory import ModelObservatory
-from rubin_sim.scheduler.schedulers import CoreScheduler, FilterSchedUzy
+from rubin_sim.scheduler.schedulers import CoreScheduler, FilterSwapScheduler
 from rubin_sim.scheduler.utils import (
     EuclidOverlapFootprint,
     ConstantFootprint,
     make_rolling_footprints,
+    IntRounded
 )
 import rubin_sim.scheduler.basis_functions as bf
 from rubin_sim.scheduler.surveys import (
@@ -33,6 +34,18 @@ import rubin_sim
 from astropy.utils import iers
 
 iers.conf.auto_download = False
+
+
+class SimpleFilterSched(FilterSwapScheduler):
+    def __init__(self, illum_limit=10.0):
+        self.illum_limit_ir = IntRounded(illum_limit)
+
+    def __call__(self, conditions):
+        if IntRounded(conditions.moon_phase) > self.illum_limit_ir:
+            result = ["g", "r", "i", "z", "y"]
+        else:
+            result = ["u", "g", "r", "i", "z"]
+        return result
 
 
 def standard_bf(
@@ -1251,7 +1264,7 @@ def run_sched(
     years = np.round(survey_length / 365.25)
     scheduler = CoreScheduler(surveys, nside=nside)
     n_visit_limit = None
-    fs = FilterSchedUzy(illum_limit=illum_limit)
+    fs = SimpleFilterSched(illum_limit=illum_limit)
     observatory = ModelObservatory(nside=nside, mjd_start=mjd_start)
     observatory, scheduler, observations = sim_runner(
         observatory,
@@ -1321,7 +1334,7 @@ def main(args):
         fileroot = os.path.basename(sys.argv[0]).replace(".py", "") + "_"
     else:
         fileroot = dbroot + "_"
-    file_end = "v3.2_"
+    file_end = "v3.1_"
 
     pattern_dict = {
         1: [True],
