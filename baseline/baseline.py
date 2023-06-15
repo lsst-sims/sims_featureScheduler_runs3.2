@@ -44,8 +44,8 @@ def standard_bf(
     slewtime_weight=3.0,
     stayfilter_weight=3.0,
     template_weight=12.0,
-    u_template_weight=24.0,
-    g_template_weight=24.0,
+    u_template_weight=50.0,
+    g_template_weight=50.0,
     footprints=None,
     n_obs_template=None,
     season=300.0,
@@ -221,15 +221,14 @@ def blob_for_long(
     slewtime_weight=3.0,
     stayfilter_weight=3.0,
     template_weight=12.0,
-    u_template_weight=24.0,
-    g_template_weight=24.0,
+    u_template_weight=50.0,
+    g_template_weight=50.0,
     footprints=None,
     u_nexp1=True,
     night_pattern=[True, True],
     time_after_twi=30.0,
     HA_min=12,
     HA_max=24 - 3.5,
-    nights_delayed=-1,
     blob_names=[],
 ):
     """
@@ -361,8 +360,6 @@ def blob_for_long(
         bfs.append((bf.HaMaskBasisFunction(ha_min=HA_min, ha_max=HA_max), 0.0))
         # don't execute every night
         bfs.append((bf.NightModuloBasisFunction(night_pattern), 0.0))
-        # possibly force things to delay
-        bfs.append((bf.DelayStartBasisFunction(nights_delay=nights_delayed), 0.0))
         # only execute one blob per night
         bfs.append((bf.OnceInNightBasisFunction(notes=blob_names), 0))
 
@@ -405,9 +402,8 @@ def gen_long_gaps_survey(
     HA_min=12,
     HA_max=24 - 3.5,
     time_after_twi=120,
-    nights_delayed=-1,
-    u_template_weight=24.0,
-    g_template_weight=24.0,
+    u_template_weight=50.0,
+    g_template_weight=50.0,
 ):
     """
     Paramterers
@@ -434,7 +430,6 @@ def gen_long_gaps_survey(
             time_after_twi=time_after_twi,
             HA_min=HA_min,
             HA_max=HA_max,
-            nights_delayed=nights_delayed,
             u_template_weight=u_template_weight,
             g_template_weight=g_template_weight,
             blob_names=blob_names,
@@ -596,8 +591,8 @@ def generate_blobs(
     slewtime_weight=3.0,
     stayfilter_weight=3.0,
     template_weight=12.0,
-    u_template_weight=24.0,
-    g_template_weight=24.0,
+    u_template_weight=50.0,
+    g_template_weight=50.0,
     footprints=None,
     u_nexp1=True,
     scheduled_respect=45.0,
@@ -1278,15 +1273,11 @@ def main(args):
     nslice = args.rolling_nslice
     rolling_scale = args.rolling_strength
     dbroot = args.dbroot
-    gsw = args.gsw
     nights_off = args.nights_off
-    nights_delayed = args.nights_delayed
     neo_night_pattern = args.neo_night_pattern
     neo_filters = args.neo_filters
     neo_repeat = args.neo_repeat
     ddf_season_frac = args.ddf_season_frac
-    u_template_weight = args.utw
-    g_template_weight = args.gtw
     neo_am = args.neo_am
     neo_elong_req = args.neo_elong_req
     neo_area_req = args.neo_area_req
@@ -1377,9 +1368,6 @@ def main(args):
         nside=nside,
         footprints=footprints,
         night_pattern=gaps_night_pattern,
-        nights_delayed=nights_delayed,
-        u_template_weight=u_template_weight,
-        g_template_weight=g_template_weight,
     )
 
     # Set up the DDF surveys to dither
@@ -1425,9 +1413,6 @@ def main(args):
         nexp=nexp,
         footprints=footprints,
         mjd_start=conditions.mjd_start,
-        good_seeing_weight=gsw,
-        u_template_weight=u_template_weight,
-        g_template_weight=g_template_weight,
     )
     twi_blobs = generate_twi_blobs(
         nside,
@@ -1471,15 +1456,11 @@ if __name__ == "__main__":
     parser.add_argument("--rolling_nslice", type=int, default=2)
     parser.add_argument("--rolling_strength", type=float, default=0.9)
     parser.add_argument("--dbroot", type=str)
-    parser.add_argument("--gsw", type=float, default=3.0, help="good seeing weight")
     parser.add_argument("--ddf_season_frac", type=float, default=0.2)
     parser.add_argument("--nights_off", type=int, default=3, help="For long gaps")
-    parser.add_argument("--nights_delayed", type=int, default=-1)
     parser.add_argument("--neo_night_pattern", type=int, default=4)
     parser.add_argument("--neo_filters", type=str, default="riz")
     parser.add_argument("--neo_repeat", type=int, default=4)
-    parser.add_argument("--utw", type=float, default=50.0)
-    parser.add_argument("--gtw", type=float, default=50.0)
     parser.add_argument("--neo_am", type=float, default=2.5)
     parser.add_argument("--neo_elong_req", type=float, default=45.0)
     parser.add_argument("--neo_area_req", type=float, default=0.0)
