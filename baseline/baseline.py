@@ -215,7 +215,7 @@ def blob_for_long(
     shadow_minutes=60.0,
     max_alt=76.0,
     moon_distance=30.0,
-    ignore_obs=["DD", "twilight_neo"],
+    ignore_obs=["DD", "twilight_near_sun"],
     m5_weight=6.0,
     footprint_weight=1.5,
     slewtime_weight=3.0,
@@ -451,7 +451,7 @@ def gen_GreedySurveys(
     shadow_minutes=60.0,
     max_alt=76.0,
     moon_distance=30.0,
-    ignore_obs=["DD", "twilight_neo"],
+    ignore_obs=["DD", "twilight_near_sun"],
     m5_weight=3.0,
     footprint_weight=0.75,
     slewtime_weight=3.0,
@@ -585,7 +585,7 @@ def generate_blobs(
     shadow_minutes=60.0,
     max_alt=76.0,
     moon_distance=30.0,
-    ignore_obs=["DD", "twilight_neo"],
+    ignore_obs=["DD", "twilight_near_sun"],
     m5_weight=6.0,
     footprint_weight=1.5,
     slewtime_weight=3.0,
@@ -830,7 +830,7 @@ def generate_twi_blobs(
     shadow_minutes=60.0,
     max_alt=76.0,
     moon_distance=30.0,
-    ignore_obs=["DD", "twilight_neo"],
+    ignore_obs=["DD", "twilight_near_sun"],
     m5_weight=6.0,
     footprint_weight=1.5,
     slewtime_weight=3.0,
@@ -1065,7 +1065,7 @@ def ecliptic_target(nside=32, dist_to_eclip=40.0, dec_max=30.0, mask=None):
     return result
 
 
-def generate_twilight_neo(
+def generate_twilight_near_sun(
     nside,
     night_pattern=None,
     nexp=1,
@@ -1130,7 +1130,7 @@ def generate_twilight_neo(
     max_elong = 60.0
     az_range = 180.0
 
-    survey_name = "twilight_neo"
+    survey_name = "twilight_near_sun"
     footprint = ecliptic_target(nside=nside, mask=footprint_mask)
     constant_fp = ConstantFootprint()
     for filtername in filters:
@@ -1398,7 +1398,7 @@ def main(args):
     )
 
     greedy = gen_GreedySurveys(nside, nexp=nexp, footprints=footprints)
-    neo = generate_twilight_neo(
+    neo = generate_twilight_near_sun(
         nside,
         night_pattern=neo_night_pattern,
         filters=neo_filters,
