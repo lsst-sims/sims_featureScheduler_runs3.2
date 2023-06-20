@@ -433,7 +433,9 @@ def gen_long_gaps_survey(
             g_template_weight=g_template_weight,
             blob_names=blob_names,
         )
-        scripted = ScriptedSurvey([], nside=nside, ignore_obs=["blob", "DDF", "twi"])
+        scripted = ScriptedSurvey(
+            [], nside=nside, ignore_obs=["blob", "DDF", "twi", "pair"]
+        )
         surveys.append(
             LongGapSurvey(blob[0], scripted, gap_range=gap_range, avoid_zenith=True)
         )
@@ -787,9 +789,9 @@ def generate_blobs(
         weights = [val[1] for val in bfs]
         basis_functions = [val[0] for val in bfs]
         if filtername2 is None:
-            survey_name = "blob, %s" % filtername
+            survey_name = "pair_%i, %s" % (pair_time, filtername)
         else:
-            survey_name = "blob, %s%s" % (filtername, filtername2)
+            survey_name = "pair_%i, %s%s" % (pair_time, filtername, filtername2)
         if filtername2 is not None:
             detailer_list.append(detailers.TakeAsPairsDetailer(filtername=filtername2))
 
@@ -1003,9 +1005,9 @@ def generate_twi_blobs(
         weights = [val[1] for val in bfs]
         basis_functions = [val[0] for val in bfs]
         if filtername2 is None:
-            survey_name = "blob_twi, %s" % filtername
+            survey_name = "pair_%i, %s" % (pair_time, filtername)
         else:
-            survey_name = "blob_twi, %s%s" % (filtername, filtername2)
+            survey_name = "pair_%i, %s%s" % (pair_time, filtername, filtername2)
         if filtername2 is not None:
             detailer_list.append(detailers.TakeAsPairsDetailer(filtername=filtername2))
         surveys.append(
@@ -1215,7 +1217,7 @@ def generate_twilight_near_sun(
                 nside=nside,
                 exptime=exptime,
                 survey_note=survey_name,
-                ignore_obs=["DD", "greedy", "blob"],
+                ignore_obs=["DD", "greedy", "blob", "pair"],
                 dither=True,
                 nexp=nexp,
                 detailers=detailer_list,
