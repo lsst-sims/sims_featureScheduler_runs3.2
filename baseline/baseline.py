@@ -356,7 +356,6 @@ def blob_for_long(
         bfs.append((bf.TimeToTwilightBasisFunction(time_needed=time_needed), 0.0))
         bfs.append((bf.NotTwilightBasisFunction(), 0.0))
         bfs.append((bf.AfterEveningTwiBasisFunction(time_after=time_after_twi), 0.0))
-        # XXX--move kwargs up
         bfs.append((bf.HaMaskBasisFunction(ha_min=HA_min, ha_max=HA_max), 0.0))
         # don't execute every night
         bfs.append((bf.NightModuloBasisFunction(night_pattern), 0.0))
@@ -1083,7 +1082,11 @@ def generate_twilight_near_sun(
     n_repeat=4,
     sun_alt_limit=-14.8,
     slew_estimate=4.5,
-    elong_limit=45.0,
+    moon_distance=30.0,
+    shadow_minutes=60.0,
+    max_alt=76.0,
+    max_elong=60.0,
+    az_range=180.0,
 ):
     """Generate a survey for observing NEO objects in twilight
 
@@ -1123,13 +1126,6 @@ def generate_twilight_near_sun(
     slew_estimate : float (4.5)
         An estimate of how long it takes to slew between neighboring fields (seconds).
     """
-    # XXX finish eliminating magic numbers and document this one
-    moon_distance = 30.0
-    shadow_minutes = 60.0
-    max_alt = 76.0
-    max_elong = 60.0
-    az_range = 180.0
-
     survey_name = "twilight_near_sun"
     footprint = ecliptic_target(nside=nside, mask=footprint_mask)
     constant_fp = ConstantFootprint()
@@ -1203,8 +1199,6 @@ def generate_twilight_near_sun(
         bfs.append((bf.NightModuloBasisFunction(pattern=night_pattern), 0))
         # Do not attempt unless the sun is getting high
         bfs.append(((bf.SunAltHighLimitBasisFunction(alt_limit=sun_alt_limit)), 0))
-        # Only look near the sun
-        bfs.append((bf.SolarElongMaskBasisFunction(elong_limit=elong_limit), 0))
 
         # unpack the basis functions and weights
         weights = [val[1] for val in bfs]
@@ -1405,7 +1399,7 @@ def main(args):
         n_repeat=neo_repeat,
         footprint_mask=footprint_mask,
         max_airmass=neo_am,
-        elong_limit=neo_elong_req,
+        max_elong=neo_elong_req,
         area_required=neo_area_req,
     )
     blobs = generate_blobs(
