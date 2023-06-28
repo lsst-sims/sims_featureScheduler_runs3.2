@@ -63,8 +63,6 @@ ls *10yrs.db | xargs -I'{}' echo "glance_dir --db '{}'" >> maf.sh
 
 generate_ss 
 cat ss_script.sh >> maf.sh
-generate_ss --pop vatiras_granvik_10k
-cat ss_script.sh >> maf.sh
 
 # Need to activate for each I guess
 cat maf.sh | xargs -I'{}' echo "cd /gscratch/scrubbed/yoachim/sims_featureScheduler_runs3.2/maf ; source setup_env ; {}" > maf_final.sh
