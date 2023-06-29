@@ -14,7 +14,7 @@
 
 ## Nodes
 
-#SBATCH --nodes=2
+#SBATCH --nodes=3
 #SBATCH --ntasks-per-node=28
 
 ## Walltime (hours:min:sec) Do not specify a walltime substantially more than your job needs.
@@ -55,11 +55,12 @@ cd /gscratch/scrubbed/yoachim/sims_featureScheduler_runs3.2/maf
 ## run all the baseline commands in parallel
 module load parallel-20170722
 
+rm maf.sh
 
-ls *10yrs.db | xargs -I'{}' echo "scimaf_dir --db '{}'" > maf.sh
-ls *10yrs.db | xargs -I'{}' echo "ddf_dir --db '{}'" >> maf.sh
-ls *10yrs.db | xargs -I'{}' echo "metadata_dir --db '{}'" >> maf.sh
-ls *10yrs.db | xargs -I'{}' echo "glance_dir --db '{}'" >> maf.sh
+# ls *10yrs.db | xargs -I'{}' echo "scimaf_dir --db '{}'" > maf.sh
+# ls *10yrs.db | xargs -I'{}' echo "ddf_dir --db '{}'" >> maf.sh
+# ls *10yrs.db | xargs -I'{}' echo "metadata_dir --db '{}'" >> maf.sh
+# ls *10yrs.db | xargs -I'{}' echo "glance_dir --db '{}'" >> maf.sh
 
 generate_ss 
 cat ss_script.sh >> maf.sh
