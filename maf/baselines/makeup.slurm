@@ -33,7 +33,7 @@
 
 ## Specify the working directory for this job
 
-#SBATCH --chdir=/gscratch/scrubbed/yoachim/sims_featureScheduler_runs3.2/maf
+#SBATCH --chdir=/gscratch/scrubbed/yoachim/sims_featureScheduler_runs3.2/maf/baselines
 
 ##turn on e-mail notification
 
@@ -50,12 +50,11 @@ source ~/anaconda3/etc/profile.d/conda.sh
 conda activate guro
 export OPENBLAS_NUM_THREADS=1
 
-cd /gscratch/scrubbed/yoachim/sims_featureScheduler_runs3.2/maf
+cd /gscratch/scrubbed/yoachim/sims_featureScheduler_runs3.2/maf/baselines
 
 ## run all the baseline commands in parallel
 module load parallel-20170722
 
-rm maf.sh
 
 # ls *10yrs.db | xargs -I'{}' echo "scimaf_dir --db '{}'" > maf.sh
 # ls *10yrs.db | xargs -I'{}' echo "ddf_dir --db '{}'" >> maf.sh
@@ -63,14 +62,6 @@ rm maf.sh
 # ls *10yrs.db | xargs -I'{}' echo "glance_dir --db '{}'" >> maf.sh
 
 generate_ss 
-cat ss_script.sh >> maf.sh
 
-# Need to activate for each I guess
-cat maf.sh | xargs -I'{}' echo "cd /gscratch/scrubbed/yoachim/sims_featureScheduler_runs3.2/maf ; source setup_env ; {}" > maf_final.sh
+cat ss_script.sh | parallel -j 28
 
-scontrol show hostnames > list_of_nodes
-cpu_count=28
-
-cat maf_final.sh | parallel --sshloginfile list_of_nodes -j $cpu_count
-
-gather_summaries --to_hdf
