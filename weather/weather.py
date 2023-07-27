@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pylab as plt
 import healpy as hp
 from rubin_sim.scheduler.model_observatory import ModelObservatory
-from rubin_sim.scheduler.schedulers import CoreScheduler, FilterSchedUzy
+from rubin_sim.scheduler.schedulers import CoreScheduler, FilterSwapScheduler
 from rubin_sim.scheduler.utils import (
     EuclidOverlapFootprint,
     ConstantFootprint,
@@ -28,11 +28,70 @@ from astropy.coordinates import SkyCoord
 from astropy import units as u
 from rubin_sim.utils import _hpid2_ra_dec
 import rubin_sim
+import rubin_sim.scheduler.features as features
+from rubin_sim.scheduler.utils import IntRounded
+
 
 # So things don't fail on hyak
 from astropy.utils import iers
 
 iers.conf.auto_download = False
+
+
+class SimpleFilterSched(FilterSwapScheduler):
+    def __init__(self, illum_limit=10.0):
+        self.illum_limit_ir = IntRounded(illum_limit)
+
+    def __call__(self, conditions):
+        if IntRounded(conditions.moon_phase) > self.illum_limit_ir:
+            result = ["g", "r", "i", "z", "y"]
+        else:
+            result = ["u", "g", "r", "i", "z"]
+        return result
+
+
+class SunHighLimitBasisFucntion(rubin_sim.scheduler.basis_functions.BaseBasisFunction):
+    """Only execute if the sun is high. Have a sum alt limit for sunset, and a time 
+       until 12 degree twilight for sun rise.
+    """
+
+    def __init__(self, sun_alt_limit=-14.8, time_to_12deg=21., time_remaining=15.):
+        super(SunHighLimitBasisFucntion, self).__init__()
+        self.sun_alt_limit = np.radians(sun_alt_limit)
+        self.time_to_12deg = time_to_12deg / 60. / 24.
+        self.time_remaining = time_remaining / 60. / 24.
+
+    def check_feasibility(self, conditions):
+        result = False
+
+        # If the sun is high, it's ok to execute
+        if conditions.sun_alt > self.sun_alt_limit:
+            result = True
+        time_left = conditions.sun_n12_rising - conditions.mjd
+        if time_left < self.time_to_12deg:
+            result = True
+        if time_left < self.time_remaining:
+            result = False
+        return result
+
+
+class FilterDistBasisFunction(rubin_sim.scheduler.basis_functions.BaseBasisFunction):
+    """Track filter distribution, increase reward as fraction of observations in 
+    specified filter drops.
+    """
+
+    def __init__(self, filtername="r"):
+        super(FilterDistBasisFunction, self).__init__(filtername=filtername)
+
+        self.survey_features = {}
+        # Count of all the observations
+        self.survey_features["n_obs_count_all"] = features.NObsCount(filtername=None)
+        # Count in filter
+        self.survey_features["n_obs_count_in_filt"] = features.NObsCount(filtername=filtername)
+
+    def _calc_value(self, conditions, indx=None):
+        result = self.survey_features["n_obs_count_all"].feature/(self.survey_features["n_obs_count_in_filt"].feature+1)
+        return result
 
 
 def standard_bf(
@@ -57,13 +116,50 @@ def standard_bf(
 
     Parameters
     ----------
-    XXX
-
+    nside : int (32)
+        The HEALpix nside to use
+    nexp : int (1)
+        The number of exposures to use in a visit.
+    exptime : float (30.)
+        The exposure time to use per visit (seconds)
+    filtername : list of str
+        The filternames for the first set
+    filtername2 : list of str
+        The filter names for the second in the pair (None if unpaired)
+    n_obs_template : int (5)
+        The number of observations to take every season in each filter
+    season : float (300)
+        The length of season (i.e., how long before templates expire) (days)
+    season_start_hour : float (-4.)
+        For weighting how strongly a template image needs to be observed (hours)
+    sesason_end_hour : float (2.)
+        For weighting how strongly a template image needs to be observed (hours)
+    moon_distance : float (30.)
+        The mask radius to apply around the moon (degrees)
+    m5_weight : float (3.)
+        The weight for the 5-sigma depth difference basis function
+    footprint_weight : float (0.3)
+        The weight on the survey footprint basis function.
+    slewtime_weight : float (3.)
+        The weight on the slewtime basis function
+    stayfilter_weight : float (3.)
+        The weight on basis function that tries to stay avoid filter changes.
+    template_weight : float (12.)
+        The weight to place on getting image templates every season
+    u_template_weight : float (24.)
+        The weight to place on getting image templates in u-band. Since there
+        are so few u-visits, it can be helpful to turn this up a little higher than
+        the standard template_weight kwarg.
+    g_template_weight : float (24.)
+        The weight to place on getting image templates in g-band. Since there
+        are so few g-visits, it can be helpful to turn this up a little higher than
+        the standard template_weight kwarg.
 
     Returns
     -------
-    list of tuples pairs (basis function, weight) that is
-    (rubin_sim.scheduler.BasisFunction object, float)
+    basis_functions_weights : `list` 
+        list of tuple pairs (basis function, weight) that is 
+        (rubin_sim.scheduler.BasisFunction object, float)
 
     """
     template_weights = {
@@ -443,7 +539,7 @@ def gen_long_gaps_survey(
     return surveys
 
 
-def gen_GreedySurveys(
+def gen_greedy_surveys(
     nside=32,
     nexp=2,
     exptime=30.0,
@@ -1049,7 +1145,19 @@ def ddf_surveys(detailers=None, season_unobs_frac=0.2, euclid_detailers=None):
 
 
 def ecliptic_target(nside=32, dist_to_eclip=40.0, dec_max=30.0, mask=None):
-    """Generate a target_map for the area around the ecliptic"""
+    """Generate a target_map for the area around the ecliptic
+    
+    Parameters
+    ----------
+    nside : int (32)
+        The HEALpix nside to use
+    dist_to_eclip : float (40)
+        The distance to the ecliptic to constrain to (degrees).
+    dec_max : float (30)
+        The max declination to alow (degrees).
+    mask : np.array (None)
+        Any additional mask to apply, should be a HEALpix mask with matching nside.
+    """
 
     ra, dec = _hpid2_ra_dec(nside, np.arange(hp.nside2npix(nside)))
     result = np.zeros(ra.size)
@@ -1089,6 +1197,9 @@ def generate_twilight_near_sun(
     max_alt=76.0,
     max_elong=60.0,
     az_range=180.0,
+    ignore_obs=["DD", "pair", "long", "blob", "greedy"],
+    filter_dist_weight=0.3,
+    time_to_12deg=25.,
 ):
     """Generate a survey for observing NEO objects in twilight
 
@@ -1127,6 +1238,8 @@ def generate_twilight_near_sun(
         Do not start unless sun is higher than this limit (degrees)
     slew_estimate : float (4.5)
         An estimate of how long it takes to slew between neighboring fields (seconds).
+    time_to_sunrise : float (25.)
+        Do not execute if time to sunrise is greater than (minutes).
     """
     survey_name = "twilight_near_sun"
     footprint = ecliptic_target(nside=nside, mask=footprint_mask)
@@ -1172,6 +1285,9 @@ def generate_twilight_near_sun(
         bfs.append(
             (bf.StrictFilterBasisFunction(filtername=filtername), stayfilter_weight)
         )
+        bfs.append(
+                   (FilterDistBasisFunction(filtername=filtername), filter_dist_weight)
+        )
         # Need a toward the sun, reward high airmass, with an airmass cutoff basis function.
         bfs.append(
             (bf.NearSunTwilightBasisFunction(nside=nside, max_airmass=max_airmass), 0)
@@ -1200,7 +1316,7 @@ def generate_twilight_near_sun(
 
         bfs.append((bf.NightModuloBasisFunction(pattern=night_pattern), 0))
         # Do not attempt unless the sun is getting high
-        bfs.append(((bf.SunAltHighLimitBasisFunction(alt_limit=sun_alt_limit)), 0))
+        bfs.append(((SunHighLimitBasisFucntion(sun_alt_limit=sun_alt_limit, time_to_12deg=time_to_12deg)), 0))
 
         # unpack the basis functions and weights
         weights = [val[1] for val in bfs]
@@ -1217,7 +1333,7 @@ def generate_twilight_near_sun(
                 nside=nside,
                 exptime=exptime,
                 survey_note=survey_name,
-                ignore_obs=["DD", "greedy", "blob", "pair"],
+                ignore_obs=ignore_obs,
                 dither=True,
                 nexp=nexp,
                 detailers=detailer_list,
@@ -1243,7 +1359,7 @@ def run_sched(
     years = np.round(survey_length / 365.25)
     scheduler = CoreScheduler(surveys, nside=nside)
     n_visit_limit = None
-    fs = FilterSchedUzy(illum_limit=illum_limit)
+    fs = SimpleFilterSched(illum_limit=illum_limit)
     observatory = ModelObservatory(nside=nside, mjd_start=mjd_start, cloud_offset_year=cloud_offset_year)
     observatory, scheduler, observations = sim_runner(
         observatory,
@@ -1395,7 +1511,7 @@ def main(args):
         euclid_detailers=euclid_detailers,
     )
 
-    greedy = gen_GreedySurveys(nside, nexp=nexp, footprints=footprints)
+    greedy = gen_greedy_surveys(nside, nexp=nexp, footprints=footprints)
     neo = generate_twilight_near_sun(
         nside,
         night_pattern=neo_night_pattern,
