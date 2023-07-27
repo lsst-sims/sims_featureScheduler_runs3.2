@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pylab as plt
 import healpy as hp
 from rubin_sim.scheduler.model_observatory import ModelObservatory
-from rubin_sim.scheduler.schedulers import CoreScheduler, FilterSchedUzy
+from rubin_sim.scheduler.schedulers import CoreScheduler, FilterSwapScheduler
 from rubin_sim.scheduler.utils import (
     EuclidOverlapFootprint,
     ConstantFootprint,
@@ -28,6 +28,9 @@ from astropy.coordinates import SkyCoord
 from astropy import units as u
 from rubin_sim.utils import _hpid2_ra_dec
 import rubin_sim
+import rubin_sim.scheduler.features as features
+from rubin_sim.scheduler.utils import IntRounded
+
 
 # So things don't fail on hyak
 from astropy.utils import iers
@@ -103,6 +106,63 @@ class ScriptedSurveyFilter(ScriptedSurvey):
         self.scheduled_obs = None
 
 
+
+class SimpleFilterSched(FilterSwapScheduler):
+    def __init__(self, illum_limit=10.0):
+        self.illum_limit_ir = IntRounded(illum_limit)
+
+    def __call__(self, conditions):
+        if IntRounded(conditions.moon_phase) > self.illum_limit_ir:
+            result = ["g", "r", "i", "z", "y"]
+        else:
+            result = ["u", "g", "r", "i", "z"]
+        return result
+
+
+class SunHighLimitBasisFucntion(rubin_sim.scheduler.basis_functions.BaseBasisFunction):
+    """Only execute if the sun is high. Have a sum alt limit for sunset, and a time 
+       until 12 degree twilight for sun rise.
+    """
+
+    def __init__(self, sun_alt_limit=-14.8, time_to_12deg=21., time_remaining=15.):
+        super(SunHighLimitBasisFucntion, self).__init__()
+        self.sun_alt_limit = np.radians(sun_alt_limit)
+        self.time_to_12deg = time_to_12deg / 60. / 24.
+        self.time_remaining = time_remaining / 60. / 24.
+
+    def check_feasibility(self, conditions):
+        result = False
+
+        # If the sun is high, it's ok to execute
+        if conditions.sun_alt > self.sun_alt_limit:
+            result = True
+        time_left = conditions.sun_n12_rising - conditions.mjd
+        if time_left < self.time_to_12deg:
+            result = True
+        if time_left < self.time_remaining:
+            result = False
+        return result
+
+
+class FilterDistBasisFunction(rubin_sim.scheduler.basis_functions.BaseBasisFunction):
+    """Track filter distribution, increase reward as fraction of observations in 
+    specified filter drops.
+    """
+
+    def __init__(self, filtername="r"):
+        super(FilterDistBasisFunction, self).__init__(filtername=filtername)
+
+        self.survey_features = {}
+        # Count of all the observations
+        self.survey_features["n_obs_count_all"] = features.NObsCount(filtername=None)
+        # Count in filter
+        self.survey_features["n_obs_count_in_filt"] = features.NObsCount(filtername=filtername)
+
+    def _calc_value(self, conditions, indx=None):
+        result = self.survey_features["n_obs_count_all"].feature/(self.survey_features["n_obs_count_in_filt"].feature+1)
+        return result
+
+
 def standard_bf(
     nside,
     filtername="g",
@@ -166,8 +226,8 @@ def standard_bf(
 
     Returns
     -------
-    basis_functions_weights : `list`
-        list of tuple pairs (basis function, weight) that is
+    basis_functions_weights : `list` 
+        list of tuple pairs (basis function, weight) that is 
         (rubin_sim.scheduler.BasisFunction object, float)
 
     """
@@ -1159,7 +1219,7 @@ def ddf_surveys(
 
 def ecliptic_target(nside=32, dist_to_eclip=40.0, dec_max=30.0, mask=None):
     """Generate a target_map for the area around the ecliptic
-
+    
     Parameters
     ----------
     nside : int (32)
@@ -1210,6 +1270,9 @@ def generate_twilight_near_sun(
     max_alt=76.0,
     max_elong=60.0,
     az_range=180.0,
+    ignore_obs=["DD", "pair", "long", "blob", "greedy"],
+    filter_dist_weight=0.3,
+    time_to_12deg=25.,
 ):
     """Generate a survey for observing NEO objects in twilight
 
@@ -1248,10 +1311,12 @@ def generate_twilight_near_sun(
         Do not start unless sun is higher than this limit (degrees)
     slew_estimate : float (4.5)
         An estimate of how long it takes to slew between neighboring fields (seconds).
+    time_to_sunrise : float (25.)
+        Do not execute if time to sunrise is greater than (minutes).
     """
     survey_name = "twilight_near_sun"
     footprint = ecliptic_target(nside=nside, mask=footprint_mask)
-    constant_fp = ConstantFootprint(nside=nside)
+    constant_fp = ConstantFootprint()
     for filtername in filters:
         constant_fp.set_footprint(filtername, footprint)
 
@@ -1293,6 +1358,9 @@ def generate_twilight_near_sun(
         bfs.append(
             (bf.StrictFilterBasisFunction(filtername=filtername), stayfilter_weight)
         )
+        bfs.append(
+                   (FilterDistBasisFunction(filtername=filtername), filter_dist_weight)
+        )
         # Need a toward the sun, reward high airmass, with an airmass cutoff basis function.
         bfs.append(
             (bf.NearSunTwilightBasisFunction(nside=nside, max_airmass=max_airmass), 0)
@@ -1321,7 +1389,7 @@ def generate_twilight_near_sun(
 
         bfs.append((bf.NightModuloBasisFunction(pattern=night_pattern), 0))
         # Do not attempt unless the sun is getting high
-        bfs.append(((bf.SunAltHighLimitBasisFunction(alt_limit=sun_alt_limit)), 0))
+        bfs.append(((SunHighLimitBasisFucntion(sun_alt_limit=sun_alt_limit, time_to_12deg=time_to_12deg)), 0))
 
         # unpack the basis functions and weights
         weights = [val[1] for val in bfs]
@@ -1338,7 +1406,7 @@ def generate_twilight_near_sun(
                 nside=nside,
                 exptime=exptime,
                 survey_note=survey_name,
-                ignore_obs=["DD", "greedy", "blob", "pair"],
+                ignore_obs=ignore_obs,
                 dither=True,
                 nexp=nexp,
                 detailers=detailer_list,
@@ -1363,7 +1431,7 @@ def run_sched(
     years = np.round(survey_length / 365.25)
     scheduler = CoreScheduler(surveys, nside=nside)
     n_visit_limit = None
-    fs = FilterSchedUzy(illum_limit=illum_limit)
+    fs = SimpleFilterSched(illum_limit=illum_limit)
     observatory = ModelObservatory(nside=nside, mjd_start=mjd_start)
     observatory, scheduler, observations = sim_runner(
         observatory,
