@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pylab as plt
 import healpy as hp
 from rubin_sim.scheduler.model_observatory import ModelObservatory
-from rubin_sim.scheduler.schedulers import CoreScheduler, FilterSwapScheduler
+from rubin_sim.scheduler.schedulers import CoreScheduler, FilterSchedUzy
 from rubin_sim.scheduler.utils import (
     EuclidOverlapFootprint,
     ConstantFootprint,
@@ -105,17 +105,6 @@ class ScriptedSurveyFilter(ScriptedSurvey):
         # Update so other survey objects don't bother trying to respect these observations.
         self.scheduled_obs = None
 
-
-class SimpleFilterSched(FilterSwapScheduler):
-    def __init__(self, illum_limit=10.0):
-        self.illum_limit_ir = IntRounded(illum_limit)
-
-    def __call__(self, conditions):
-        if IntRounded(conditions.moon_phase) > self.illum_limit_ir:
-            result = ["g", "r", "i", "z", "y"]
-        else:
-            result = ["u", "g", "r", "i", "z"]
-        return result
 
 
 class SunHighLimitBasisFucntion(rubin_sim.scheduler.basis_functions.BaseBasisFunction):
@@ -1426,7 +1415,7 @@ def run_sched(
     years = np.round(survey_length / 365.25)
     scheduler = CoreScheduler(surveys, nside=nside)
     n_visit_limit = None
-    fs = SimpleFilterSched(illum_limit=illum_limit)
+    fs = FilterSchedUzy(illum_limit=illum_limit)
     observatory = ModelObservatory(nside=nside, mjd_start=mjd_start)
     observatory, scheduler, observations = sim_runner(
         observatory,
