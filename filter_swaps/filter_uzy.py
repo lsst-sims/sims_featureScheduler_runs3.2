@@ -29,25 +29,12 @@ from astropy import units as u
 from rubin_sim.utils import _hpid2_ra_dec
 import rubin_sim
 import rubin_sim.scheduler.features as features
-from rubin_sim.scheduler.utils import IntRounded
 
 
 # So things don't fail on hyak
 from astropy.utils import iers
 
 iers.conf.auto_download = False
-
-
-class SimpleFilterSched(FilterSwapScheduler):
-    def __init__(self, illum_limit=10.0):
-        self.illum_limit_ir = IntRounded(illum_limit)
-
-    def __call__(self, conditions):
-        if IntRounded(conditions.moon_phase) > self.illum_limit_ir:
-            result = ["g", "r", "i", "z", "y"]
-        else:
-            result = ["u", "g", "r", "i", "z"]
-        return result
 
 
 class SunHighLimitBasisFucntion(rubin_sim.scheduler.basis_functions.BaseBasisFunction):
