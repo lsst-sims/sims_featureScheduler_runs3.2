@@ -1393,7 +1393,7 @@ def main(args):
     neo_am = args.neo_am
     neo_elong_req = args.neo_elong_req
     neo_area_req = args.neo_area_req
-    filter_weight = args.filter_weights
+    filter_weight = args.filter_weight
 
     # Be sure to also update and regenerate DDF grid save file if changing mjd_start
     mjd_start = 60796.0
