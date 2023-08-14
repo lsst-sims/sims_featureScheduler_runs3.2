@@ -108,7 +108,7 @@ def make_rolling_footprints(
     rolling = np.roll(rolling, order_roll).tolist()
 
     if insert_const is not None:
-        rolling = rolling[0: insert_const] + [1] + rolling[insert_const:]
+        rolling.insert(insert_const, 1)
 
     all_slopes = [start + np.roll(rolling, i).tolist() + end for i in range(nslice)]
 
