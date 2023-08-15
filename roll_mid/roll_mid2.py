@@ -50,7 +50,7 @@ def make_rolling_footprints(
     nside=32,
     wfd_indx=None,
     order_roll=0,
-    n_cycles=2,
+    n_cycles=None,
     n_constant_start=3,
     n_constant_end=6,
     insert_const=None
@@ -1586,7 +1586,7 @@ def main(args):
         nside=nside,
         wfd_indx=wfd_indx,
         order_roll=1,
-        n_cycles=4,
+        n_cycles=2,
         insert_const=insert_const
     )
 

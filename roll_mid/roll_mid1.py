@@ -1585,7 +1585,7 @@ def main(args):
         nside=nside,
         wfd_indx=wfd_indx,
         order_roll=1,
-        n_cycles=4,
+        n_cycles=3,
         insert_const=insert_const
     )
 
