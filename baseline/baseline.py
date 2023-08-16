@@ -126,7 +126,7 @@ def standard_bf(
         The filternames for the first set
     filtername2 : list of str
         The filter names for the second in the pair (None if unpaired)
-    n_obs_template : int (5)
+    n_obs_template : dict (None)
         The number of observations to take every season in each filter
     season : float (300)
         The length of season (i.e., how long before templates expire) (days)
@@ -346,8 +346,8 @@ def blob_for_long(
         The ideal time between pairs (minutes)
     camera_rot_limits : list of float ([-80., 80.])
         The limits to impose when rotationally dithering the camera (degrees).
-    n_obs_template : int (5)
-        The number of observations to take every season in each filter
+    n_obs_template : dict (None)
+        The number of observations to take every season in each filter. If None, sets to 3 each.
     season : float (300)
         The length of season (i.e., how long before templates expire) (days)
     season_start_hour : float (-4.)
@@ -717,8 +717,8 @@ def generate_blobs(
         The ideal time between pairs (minutes)
     camera_rot_limits : list of float ([-80., 80.])
         The limits to impose when rotationally dithering the camera (degrees).
-    n_obs_template : int (3)
-        The number of observations to take every season in each filter
+    n_obs_template : Dict (None)
+        The number of observations to take every season in each filter. If None, sets to 3 each.
     season : float (300)
         The length of season (i.e., how long before templates expire) (days)
     season_start_hour : float (-4.)
@@ -959,8 +959,8 @@ def generate_twi_blobs(
         The ideal time between pairs (minutes)
     camera_rot_limits : list of float ([-80., 80.])
         The limits to impose when rotationally dithering the camera (degrees).
-    n_obs_template : int (3)
-        The number of observations to take every season in each filter
+    n_obs_template : dict (None)
+        The number of observations to take every season in each filter. If None, sets to 3 each.
     season : float (300)
         The length of season (i.e., how long before templates expire) (days)
     season_start_hour : float (-4.)
