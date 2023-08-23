@@ -55,7 +55,7 @@ cd /gscratch/scrubbed/yoachim/sims_featureScheduler_runs3.2/tight_twilight
 ## run all the baseline commands in parallel
 module load parallel-20170722
 
-cat tight.slurm | parallel -j 28
+cat tight.sh | parallel -j 28
 
 rm maf.sh
 ls *10yrs.db | xargs -I'{}' echo "glance_dir --db '{}'" > maf.sh
