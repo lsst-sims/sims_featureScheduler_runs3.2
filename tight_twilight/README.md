@@ -11,3 +11,8 @@ Even getting rid of pair_15, still a lot of greedy/greedy swaps
 
 by default, greedy is r,i,z,y
 twilight near sun is r,i,z
+
+-----
+
+OK, looks like tight 6 is a reasonable way to go. Should still probably fiddle with pair_15 to figure out what's going on, but this is fine.
+
