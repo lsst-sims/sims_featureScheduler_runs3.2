@@ -98,7 +98,7 @@ def standard_bf(
     nside,
     filtername="g",
     filtername2="i",
-    m5_weight=6.0,
+    m5_weight=0.0,
     footprint_weight=1.5,
     slewtime_weight=3.0,
     stayfilter_weight=3.0,
@@ -549,7 +549,7 @@ def gen_greedy_surveys(
     max_alt=76.0,
     moon_distance=30.0,
     ignore_obs=["DD", "twilight_near_sun"],
-    m5_weight=3.0,
+    m5_weight=0.0,
     footprint_weight=0.75,
     slewtime_weight=3.0,
     stayfilter_weight=3.0,
@@ -683,7 +683,7 @@ def generate_blobs(
     max_alt=76.0,
     moon_distance=30.0,
     ignore_obs=["DD", "twilight_near_sun"],
-    m5_weight=6.0,
+    m5_weight=0.0,
     footprint_weight=1.5,
     slewtime_weight=3.0,
     stayfilter_weight=3.0,
@@ -1375,27 +1375,24 @@ def run_sched(
     return observatory, scheduler, observations
 
 
-def main():
-
-
-
-    survey_length = 365.25*10  # Days
-    outDir = None
-    verbose = False
-    max_dither = 0.7
-    illum_limit = 40.0
-    nexp = 2
-    nslice = 2
-    rolling_scale = 0.9
-    dbroot = '.'
-    nights_off = 3
-    neo_night_pattern = 4
-    neo_filters = "riz"
-    neo_repeat = 4
-    ddf_season_frac = 0.2
-    neo_am = 2.5
-    neo_elong_req = 45.
-    neo_area_req = 0.
+def main(args):
+    survey_length = args.survey_length  # Days
+    outDir = args.outDir
+    verbose = args.verbose
+    max_dither = args.maxDither
+    illum_limit = args.moon_illum_limit
+    nexp = args.nexp
+    nslice = args.rolling_nslice
+    rolling_scale = args.rolling_strength
+    dbroot = args.dbroot
+    nights_off = args.nights_off
+    neo_night_pattern = args.neo_night_pattern
+    neo_filters = args.neo_filters
+    neo_repeat = args.neo_repeat
+    ddf_season_frac = args.ddf_season_frac
+    neo_am = args.neo_am
+    neo_elong_req = args.neo_elong_req
+    neo_area_req = args.neo_area_req
 
     # Be sure to also update and regenerate DDF grid save file if changing mjd_start
     mjd_start = 60796.0
@@ -1537,21 +1534,19 @@ def main():
         repeat_night_weight=repeat_night_weight,
         night_pattern=reverse_neo_night_pattern,
     )
-    surveys = [ddfs, long_gaps, blobs, twi_blobs, neo, greedy]
-    scheduler = CoreScheduler(surveys, nside=nside)
-    
-    #observatory, scheduler, observations = run_sched(
-    #    surveys,
-    #    survey_length=survey_length,
-    #    verbose=verbose,
-    #    fileroot=os.path.join(outDir, fileroot + file_end),
-    #    extra_info=extra_info,
-    #    nside=nside,
-    #    illum_limit=illum_limit,
-    #    mjd_start=mjd_start,
-    #)
+    surveys = [blobs, greedy]
+    observatory, scheduler, observations = run_sched(
+        surveys,
+        survey_length=survey_length,
+        verbose=verbose,
+        fileroot=os.path.join(outDir, fileroot + file_end),
+        extra_info=extra_info,
+        nside=nside,
+        illum_limit=illum_limit,
+        mjd_start=mjd_start,
+    )
 
-    return observatory, scheduler
+    return observatory, scheduler, observations
 
 
 if __name__ == "__main__":
